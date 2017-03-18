@@ -15,58 +15,50 @@ public:
 
   ///* if this is false, laser measurements will be ignored (except for init)
   bool use_laser_;
-
   ///* if this is false, radar measurements will be ignored (except for init)
   bool use_radar_;
 
   ///* state vector: [pos1 pos2 vel_abs yaw_angle yaw_rate] in SI units and rad
   VectorXd x_;
-
   ///* state covariance matrix
   MatrixXd P_;
-
   ///* predicted sigma points matrix
   MatrixXd Xsig_pred_;
 
   ///* time when the state is true, in us
   long time_us_;
 
-  ///* Process noise standard deviation longitudinal acceleration in m/s^2
+  ///* Process noise
+  ///* standard deviation longitudinal acceleration in m/s^2
   double std_a_;
-
-  ///* Process noise standard deviation yaw acceleration in rad/s^2
+  ///* standard deviation yaw acceleration in rad/s^2
   double std_yawdd_;
 
-  ///* Laser measurement noise standard deviation position1 in m
+  ///* Laser measurement noise
+  ///* standard deviation position1 in m
   double std_laspx_;
-
-  ///* Laser measurement noise standard deviation position2 in m
+  ///* standard deviation position2 in m
   double std_laspy_;
 
-  ///* Radar measurement noise standard deviation radius in m
+  ///* Radar measurement noise
+  ///* standard deviation radius in m
   double std_radr_;
-
-  ///* Radar measurement noise standard deviation angle in rad
+  ///* standard deviation angle in rad
   double std_radphi_;
-
-  ///* Radar measurement noise standard deviation radius change in m/s
-  double std_radrd_ ;
+  ///* standard deviation radius change in m/s
+  double std_radrd_;
 
   ///* Weights of sigma points
   VectorXd weights_;
-
   ///* State dimension
   int n_x_;
-
   ///* Augmented state dimension
   int n_aug_;
-
   ///* Sigma point spreading parameter
   double lambda_;
 
   ///* the current NIS for radar
   double NIS_radar_;
-
   ///* the current NIS for laser
   double NIS_laser_;
 
