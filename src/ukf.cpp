@@ -160,81 +160,29 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 }
 
 
+
+
+
+
 /**
  * Predicts sigma points, the state, and the state covariance matrix.
  * @param {double} delta_t the change in time (in seconds) between the last
  * measurement and this one.
  */
 void UKF::Prediction(double delta_t) {
-//  /**
-//     * Update the state transition matrix F according to the new elapsed time.
-//   */
-//  ekf_.F_ << 1., 0., dt, 0.,
-//          0., 1., 0., dt,
-//          0., 0., 1., 0.,
-//          0., 0., 0., 1.;
-//  /**
-//     * Update the process noise covariance matrix.
-//   */
-//  float dtsq = dt * dt;
-//  ekf_.Q_ << (dtsq / 4.) * noise_ax_, 0., (dt / 2.) * noise_ax_, 0.,
-//          0., (dtsq / 4.) * noise_ay_, 0., (dt / 2.) * noise_ay_,
-//          (dt / 2.) * noise_ax_, 0., noise_ax_, 0.,
-//          0., (dt / 2.) * noise_ay_, 0., noise_ay_;
-//  ekf_.Q_ *= dtsq;
-//  /**
-//    * predict the state. standard KF equations. assume U==0
-//  */
-//  // KF Prediction step
-//  x_ = F_*x_;
-//  P_ = F_*P_*F_.transpose() + Q_;
-//
-//
-//  /**
-//    * update the state by using Kalman Filter equations
-//  */
-//  // KF Measurement update step
-//  VectorXd y = z - H_*x_;
-//  MatrixXd S = H_*P_*H_.transpose() + R_;
-//  MatrixXd K = P_*H_.transpose()*S.inverse();
-//  // new state
-//  x_ = x_ + K*y;
-//  MatrixXd I = MatrixXd::Identity(P_.diagonalSize(), P_.diagonalSize());
-//  P_ = (I - K*H_)*P_;
-//  /**
-//    * update the state by using Extended Kalman Filter equations, but non-linear radar measurement h(x)
-//  */
-//  float rho = sqrt(x_(0)*x_(0) + x_(1)*x_(1));
-//  float phi = 0.0;
-//  float rhorate = 0.0;
-//  if (std::abs(x_(0))>1e-6 && std::abs(x_(1))>1e-6) {
-//    phi = atan2(x_(1), x_(0));
-//    rhorate = (x_(0) * x_(2) + x_(1) * x_(3)) / rho;
-//  }
-//  VectorXd hx(3);
-//  hx << rho, phi, rhorate;
 
-//  // EKF Measurement update step
-//  VectorXd y = z - hx;
-//  if (y(1) > M_PI)
-//    y(1) = y(1) - M_PI;
-//  if (y(1) < -M_PI)
-//    y(1) = y(1) + M_PI;
-//  // rest is same as Update() function
-//  MatrixXd S = H_*P_*H_.transpose() + R_;
-//  MatrixXd K = P_*H_.transpose()*S.inverse();
-//  // new state
-//  x_ = x_ + K*y;
-//  MatrixXd I = MatrixXd::Identity(P_.diagonalSize(), P_.diagonalSize());
-//  P_ = (I - K*H_)*P_;
+  // calculate augmented sigma points vectors
+  MatrixXd Xsig_aug = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+  AugmentedSigmaPoints(&Xsig_aug);
+  cout << "Xsig_aug = " << Xsig_aug << endl;
 
+  // predict sigma points
+  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
+  SigmaPointPrediction(Xsig_aug, delta_t, &Xsig_pred);
+  cout << "Xsig_pred = " << Xsig_pred << endl;
 
-  /**
-  TODO:
-
-  Complete this function! Estimate the object's location. Modify the state
-  vector, x_. Predict sigma points, the state, and the state covariance matrix.
-  */
+  // predict mean and covariance
+  PredictMeanAndCovariance(Xsig_pred, &x_, &P_);
 }
 
 /**
@@ -280,3 +228,130 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   You'll also need to calculate the radar NIS.
   */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+void UKF::AugmentedSigmaPoints(MatrixXd* Xsig_out) {
+  //create augmented mean vector
+  VectorXd x_aug = VectorXd(n_aug_);
+  //create augmented state covariance
+  MatrixXd P_aug = MatrixXd(n_aug_, n_aug_);
+  //create sigma point matrix
+  MatrixXd Xsig_aug = MatrixXd(n_aug_, 2 * n_aug_ + 1);
+
+  //create augmented mean state
+  x_aug.head(5) = x_;
+  x_aug(5) = 0.;
+  x_aug(6) = 0.;
+
+  //create augmented covariance matrix
+  P_aug.fill(0.0);
+  P_aug.topLeftCorner(n_x_, n_x_) = P_;
+  P_aug(5, 5) = std_a_ * std_a_;
+  P_aug(6, 6) = std_yawdd_ * std_yawdd_;
+
+  //create square root matrix
+  MatrixXd L = P_aug.llt().matrixL();
+
+  //create augmented sigma points
+  Xsig_aug.col(0) = x_aug;
+  for (int i = 0; i < n_aug_; i++) {
+    Xsig_aug.col(i + 1) = x_aug + sqrt(lambda_ + n_aug_) * L.col(i);
+    Xsig_aug.col(i + 1 + n_aug_) = x_aug - sqrt(lambda_ + n_aug_) * L.col(i);
+  }
+
+  //write result
+  *Xsig_out = Xsig_aug;
+}
+
+
+
+void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsig_out) {
+
+  //create matrix with predicted sigma points as columns
+  MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
+
+  float dtsq = delta_t*delta_t;
+
+  //predict sigma points
+  for (int i=0; i<2*n_aug_+1; i++)
+  {
+    VectorXd x_k = VectorXd(n_aug_);
+    x_k = Xsig_aug.col(i);
+    float px = x_k(0);
+    float py = x_k(1);
+    float v = x_k(2);
+    float psi = x_k(3);
+    float psidot = x_k(4);
+    float nu_a = x_k(5);
+    float nu_psidot = x_k(6);
+
+    VectorXd x_k1 = VectorXd(n_x_);
+    //avoid division by zero
+    if (abs(psidot)>1e-5)
+    {
+      x_k1(0) = px + v/psidot*(sin(psi+psidot*delta_t)-sin(psi)) + 0.5*dtsq*cos(psi)*nu_a;
+      x_k1(1) = py + v/psidot*(-cos(psi+psidot*delta_t)+cos(psi)) + 0.5*dtsq*sin(psi)*nu_a;
+    }
+    else
+    {
+      // no change in yaw, going on straight line
+      x_k1(0) = px + v*(-sin(psi)) + 0.5*dtsq*cos(psi)*nu_a;
+      x_k1(1) = py + v*(cos(psi)) + 0.5*dtsq*sin(psi)*nu_a;
+    }
+    x_k1(2) = v + 0 + delta_t*nu_a;
+    x_k1(3) = psi + psidot*delta_t + 0.5*dtsq*nu_psidot;
+    x_k1(4) = psidot + 0 + delta_t*nu_psidot;
+
+    Xsig_pred.col(i) = x_k1;
+  }
+
+  //write result
+  *Xsig_out = Xsig_pred;
+}
+
+
+void UKF::PredictMeanAndCovariance(MatrixXd &Xsig_pred, VectorXd* x_out, MatrixXd* P_out) {
+
+  //create vector for predicted state
+  VectorXd x = VectorXd(n_x_);
+
+  //create covariance matrix for prediction
+  MatrixXd P = MatrixXd(n_x_, n_x_);
+
+  //predict state mean
+  x = weights_(0)*Xsig_pred.col(0);
+  for (int i=1; i<2*n_aug_+1; i++)
+  {
+    x += weights_(i)*Xsig_pred.col(i);
+  }
+
+  //predict state covariance matrix
+  P.fill(0.0);
+  for (int i=0; i<2*n_aug_+1; i++)
+  {
+    // state difference
+    VectorXd x_diff = Xsig_pred.col(i) - x;
+    //angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    P += weights_(i)*(x_diff)*(x_diff.transpose());
+  }
+
+  //write result
+  *x_out = x;
+  *P_out = P;
+}
+
+

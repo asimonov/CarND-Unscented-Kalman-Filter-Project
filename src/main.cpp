@@ -139,7 +139,9 @@ int main(int argc, char* argv[]) {
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
-  size_t number_of_measurements = measurement_pack_list.size();
+//  size_t number_of_measurements = measurement_pack_list.size();
+  size_t number_of_measurements = 5;
+
 
   // start filtering from the second frame (the speed is unknown in the first
   // frame)

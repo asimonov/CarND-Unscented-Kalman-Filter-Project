@@ -96,6 +96,29 @@ public:
    * @param meas_package The measurement at k+1
    */
   void UpdateRadar(MeasurementPackage meas_package);
+
+  /**
+   * Creates augmented sigma points matrix
+   * @param Xsig_out pointer to sigma points matrix where the result is written
+   */
+  void AugmentedSigmaPoints(MatrixXd* Xsig_out);
+
+  /**
+   * Transforms augmented sigma points using process equations
+   * @param Xsig_aug augmented sigma points matrix by reference
+   * @param delta_t time in seconds
+   * @param Xsig_out pointer to predicted sigma points matrix where the result is written
+   */
+  void SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsig_out);
+
+  /**
+   * Predict mean and covariance from predicted sigma points
+   * @param Xsig_pred  sigma points predicted using process equations, matrix by reference
+   * @param x_out pointer to write predicted mean state to
+   * @param P_out pointer to write predicted state covariance to
+   */
+  void PredictMeanAndCovariance(MatrixXd &Xsig_pred, VectorXd* x_out, MatrixXd* P_out);
+
 };
 
 #endif /* UKF_H */
