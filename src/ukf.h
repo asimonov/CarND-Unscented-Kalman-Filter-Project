@@ -119,13 +119,30 @@ public:
   void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
 
   /**
-   * Predict radar measurement mean z_pred and covariance S from predicted sigma points
-   * @param n_z   dimensions of radar measurements
+   * Predict RADAR measurement mean z_pred and covariance S from predicted sigma points
+   * @param n_z   dimensions of RADAR measurements
    * @param Zsig_out pointer to write predicted sigma points in measurement space to
    * @param z_out pointer to write predicted measurement mean to
    * @param S_out pointer to write predicted measurement covariance to
    */
   void PredictRadarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
+  /**
+   * Predict LIDAR measurement mean z_pred and covariance S from predicted sigma points
+   * @param n_z   dimensions of LIDAR measurements
+   * @param Zsig_out pointer to write predicted sigma points in measurement space to
+   * @param z_out pointer to write predicted measurement mean to
+   * @param S_out pointer to write predicted measurement covariance to
+   */
+  void PredictLidarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
+
+  /**
+   * Common part of predicting LIDAR and RADAR measurement mean z_pred and covariance S from predicted sigma points
+   * @param n_z   dimensions of LIDAR/RADAR measurements
+   * @param Zsig_out pointer to write predicted sigma points in measurement space to
+   * @param z_out pointer to write predicted measurement mean to
+   * @param S_out pointer to write predicted measurement covariance to
+   */
+  void PredictMeasurement(int n_z, MatrixXd &Zsig, MatrixXd &R, VectorXd* z_out, MatrixXd* S_out);
 
   /**
    * Update state and covariance from measurement.
@@ -137,6 +154,20 @@ public:
    */
   void UpdateState(int n_z, MatrixXd &Zsig, VectorXd &z_pred, MatrixXd &S, VectorXd &z);
 
+  /**
+   * Normalize angle to between -PI..PI
+   * @param angle  input angle to be normalised
+   */
+  double NormaliseAngle(double angle);
+//  inline double NormaliseAngle( double angle )
+//  {
+//    //return angle;
+//
+//    //double twoPi = 2.0 * M_PI;
+//    //return angle - twoPi * floor( angle / twoPi );
+//
+//    return angle - int(angle / M_PI) * M_PI;
+//  }
 };
 
 #endif /* UKF_H */

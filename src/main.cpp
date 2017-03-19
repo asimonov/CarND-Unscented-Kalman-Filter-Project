@@ -132,21 +132,31 @@ int main(int argc, char* argv[]) {
   // Create a UKF instance
   UKF ukf;
   // configure what we want to process
-  ukf.use_laser_ = true;
-  ukf.use_laser_ = true;
+  ukf.use_laser_ = false;// set2 works
+  ukf.use_radar_ = true;
 
   // used to compute the RMSE later
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
+  //for (int i=0; i<100; i++)
+  //{
+  //  float a = (i-50)*M_PI/10;
+  //  cout << a << " " << ukf.NormaliseAngle(a) << endl;
+  //}
+
   size_t number_of_measurements = measurement_pack_list.size();
-//  size_t number_of_measurements = 5;
+//  size_t number_of_measurements = 25;
 
 
   // start filtering from the second frame (the speed is unknown in the first
   // frame)
   for (size_t k = 0; k < number_of_measurements; ++k) {
     // Call the UKF-based fusion
+    cout << endl;
+    cout << endl;
+    cout << endl;
+    cout << "processing measurement " << (k+1) << endl;
     ukf.ProcessMeasurement(measurement_pack_list[k]);
 
     // output the estimation
