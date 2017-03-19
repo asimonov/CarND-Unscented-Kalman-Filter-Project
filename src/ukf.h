@@ -113,11 +113,29 @@ public:
 
   /**
    * Predict mean and covariance from predicted sigma points
-   * @param Xsig_pred  sigma points predicted using process equations, matrix by reference
    * @param x_out pointer to write predicted mean state to
    * @param P_out pointer to write predicted state covariance to
    */
-  void PredictMeanAndCovariance(MatrixXd &Xsig_pred, VectorXd* x_out, MatrixXd* P_out);
+  void PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out);
+
+  /**
+   * Predict radar measurement mean z_pred and covariance S from predicted sigma points
+   * @param n_z   dimensions of radar measurements
+   * @param Zsig_out pointer to write predicted sigma points in measurement space to
+   * @param z_out pointer to write predicted measurement mean to
+   * @param S_out pointer to write predicted measurement covariance to
+   */
+  void PredictRadarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, MatrixXd* S_out);
+
+  /**
+   * Update state and covariance from measurement.
+   * @param n_z    dimensions of measurement space
+   * @param Zsig   matrix of sigma points in measurement space
+   * @param z_pred predicted measurment from sigma points
+   * @param S      measurement covariance
+   * @param z      actual measurment
+   */
+  void UpdateState(int n_z, MatrixXd &Zsig, VectorXd &z_pred, MatrixXd &S, VectorXd &z);
 
 };
 
