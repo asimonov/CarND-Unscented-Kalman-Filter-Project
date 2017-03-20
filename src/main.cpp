@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
   // Create a UKF instance
   UKF ukf;
   // configure what we want to process
-  ukf.use_laser_ = false;// set2 works
+  ukf.use_laser_ = true;// set2 works
   ukf.use_radar_ = true;
 
   // used to compute the RMSE later
