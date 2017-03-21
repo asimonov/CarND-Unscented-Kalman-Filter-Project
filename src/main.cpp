@@ -208,6 +208,26 @@ int main(int argc, char* argv[]) {
     out_file_ << ukf.x_(3) << "\t"; // yaw_angle -est
     out_file_ << ukf.x_(4) << "\t"; // yaw_rate -est
 
+    // output estimates of sigmax, sigmay, correlationxy, angle
+    MatrixXd v = ukf.P_.topLeftCorner(2, 2);
+    MatrixXd d = MatrixXd(2,2);
+    d.fill(0.0);
+    d(0,0) = v(0,0);
+    d(1,1) = v(1,1);
+    MatrixXd sqrtd = d.cwiseSqrt();
+    MatrixXd dsinv = sqrtd.inverse();
+    MatrixXd r = dsinv * v * dsinv;
+    float sig1 = sqrtd(0,0);
+    float sig2 = sqrtd(1,1);
+    float corr = r(0,1);
+    //float angle = acos(corr);
+    float angle = atan2(corr);
+
+    out_file_ << sig1 << "\t";
+    out_file_ << sig2 << "\t";
+    out_file_ << corr << "\t";
+    out_file_ << angle << "\t";
+
     out_file_ << "\n";
 
     // save gt and estimates for px, py, vx, vy for RMSE calculation later
