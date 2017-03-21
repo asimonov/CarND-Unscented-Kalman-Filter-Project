@@ -90,8 +90,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       float rodot = meas_package.raw_measurements_(2);
       x_ <<   ro * cos(phi),
               ro * sin(phi),
-              rodot, // assume psi==phi, i.e. object is moving away along the axis from zero to its position
-              NormaliseAngle(phi), // assume psi==phi. why not. any direction is ok here.
+              0.0,//rodot, // assume psi==phi, i.e. object is moving away along the axis from zero to its position
+              0.0,//NormaliseAngle(phi), // assume psi==phi. why not. any direction is ok here.
               0.0; // assume the turn angle is constant
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
@@ -104,16 +104,16 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       x_ << meas_package.raw_measurements_(0),
             meas_package.raw_measurements_(1),
             0.0, // assume radial velosity is zero
-            phi, // assume object is pointing along the axis from zero to its position
+            0.0,//phi, // assume object is pointing along the axis from zero to its position
             0.0; // assume the turn angle is constant
     }
 
     // initialize state covariance matrix
-    P_ << std_radr_*std_radr_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-            0.,                std_radr_*std_radr_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-            0.,                0.,                  1.,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
-            0.,                0.,                  0.,            M_PI*M_PI/16., 0., // assume 45 degrees
-            0.,                0.,                  0.,            0.,            M_PI*M_PI/16.; // assume 45 degrees
+    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
+            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
+            0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
+            0.,                0.,                  0.,            0.1, 0., // M_PI*M_PI/16. assume 45 degrees
+            0.,                0.,                  0.,            0.,            0.1; // M_PI*M_PI/16 assume 45 degrees
 
     time_us_ = meas_package.timestamp_;
 

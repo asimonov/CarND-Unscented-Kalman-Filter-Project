@@ -51,6 +51,8 @@ void check_files(ifstream& in_file, string& in_name,
   }
 }
 
+
+
 int main(int argc, char* argv[]) {
 
   check_arguments(argc, argv);
@@ -132,7 +134,7 @@ int main(int argc, char* argv[]) {
   // Create a UKF instance
   UKF ukf;
   // configure what we want to process
-  ukf.use_laser_ = true;// set2 works
+  ukf.use_laser_ = true;
   ukf.use_radar_ = true;
 
   // used to compute the RMSE later
@@ -149,9 +151,9 @@ int main(int argc, char* argv[]) {
 //  size_t number_of_measurements = 25;
 
 
-  // start filtering from the second frame (the speed is unknown in the first
-  // frame)
+  // start filtering from the second frame (the speed is unknown in the first frame)
   for (size_t k = 0; k < number_of_measurements; ++k) {
+
     // Call the UKF-based fusion
     cout << endl;
     cout << endl;
@@ -159,12 +161,26 @@ int main(int argc, char* argv[]) {
     cout << "processing measurement " << (k+1) << endl;
     ukf.ProcessMeasurement(measurement_pack_list[k]);
 
+    // output into out file
+
+    // time, secs
+    char ch = out_file_name_[out_file_name_.length()-1-4];
+    long inittime = (ch=='1' ? 1477010443399637 : 1477010443349642);
+    long tdiff = measurement_pack_list[k].timestamp_ - inittime;
+    float t = float(tdiff)/1000000.;
+    out_file_ << t << "\t";
+
+    // output the ground truth px,py,vx,vy
+    out_file_ << gt_pack_list[k].gt_values_(0) << "\t";
+    out_file_ << gt_pack_list[k].gt_values_(1) << "\t";
+    out_file_ << gt_pack_list[k].gt_values_(2) << "\t";
+    out_file_ << gt_pack_list[k].gt_values_(3) << "\t";
+
     // output the estimation
     out_file_ << ukf.x_(0) << "\t"; // pos1 - est
     out_file_ << ukf.x_(1) << "\t"; // pos2 - est
-    out_file_ << ukf.x_(2) << "\t"; // vel_abs -est
-    out_file_ << ukf.x_(3) << "\t"; // yaw_angle -est
-    out_file_ << ukf.x_(4) << "\t"; // yaw_rate -est
+    out_file_ << ukf.x_(2)*cos(ukf.x_(3)) << "\t"; // vx - est
+    out_file_ << ukf.x_(2)*sin(ukf.x_(3)) << "\t"; // vy - est
 
     // output the measurements
     if (measurement_pack_list[k].sensor_type_ == MeasurementPackage::LASER) {
@@ -187,8 +203,14 @@ int main(int argc, char* argv[]) {
       out_file_ << ukf.NIS_radar_ << "\t";
     }
 
+    // we do not have ground truth for the next state variables, but output their estimates anyway
+    out_file_ << ukf.x_(2) << "\t"; // vel_abs -est
+    out_file_ << ukf.x_(3) << "\t"; // yaw_angle -est
+    out_file_ << ukf.x_(4) << "\t"; // yaw_rate -est
+
     out_file_ << "\n";
 
+    // save gt and estimates for px, py, vx, vy for RMSE calculation later
     VectorXd x = VectorXd(4);
     x(0) = ukf.x_(0);
     x(1) = ukf.x_(1);
