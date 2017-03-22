@@ -22,6 +22,7 @@ public:
   VectorXd x_;
   ///* state covariance matrix
   MatrixXd P_;
+  MatrixXd P_prior_;// state after predict, for debug purposes
   ///* predicted sigma points matrix
   MatrixXd Xsig_pred_;
 

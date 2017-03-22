@@ -39,17 +39,19 @@ UKF::UKF() {
   x_ = VectorXd(n_x_);
   // initial covariance matrix
   P_ = MatrixXd(n_x_, n_x_);
+  P_prior_ = MatrixXd(n_x_, n_x_);
   // predicted sigma points matrix
   Xsig_pred_ = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
 
   // Process noise
   // standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 3.0; // assuming max acceleration 6m/s2 and take half of that
+  //std_a_ = 3.0; // assuming max acceleration 6m/s2 and take half of that
+  std_a_ = 0.2; // from lessons
   // standard deviation yaw acceleration in rad/s^2
   //std_yawdd_ = M_PI/2.;
   //std_yawdd_ = M_PI/20.; about .15
-  std_yawdd_ = .3;
+  std_yawdd_ = .2; // from lectures
 
   // Laser measurement noise
   // standard deviation position1 in m
@@ -61,7 +63,8 @@ UKF::UKF() {
   // standard deviation radius in m
   std_radr_ = 0.3;
   // standard deviation angle in rad
-  std_radphi_ = M_PI/32.; // 5.6 degrees
+  //std_radphi_ = M_PI/32.; // 5.6 degrees
+  std_radphi_ = 0.0175; // from lectures. ~2.7 degrees
   // standard deviation radius change in m/s
   std_radrd_ = 0.1; // from lectures
 
@@ -112,8 +115,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
             0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
             0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
-            0.,                0.,                  0.,            0.1, 0., // M_PI*M_PI/16. assume 45 degrees
+            0.,                0.,                  0.,            0.1,            0., // M_PI*M_PI/16. assume 45 degrees
             0.,                0.,                  0.,            0.,            0.1; // M_PI*M_PI/16 assume 45 degrees
+    P_prior_ = P_;
 
     time_us_ = meas_package.timestamp_;
 
@@ -163,6 +167,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     cout << "x_ = " << endl << x_ << endl;
     cout << "P_ = " << endl << P_ << endl;
 //  }
+  P_prior_ = P_;
 
   /*****************************************************************************
    *  Update

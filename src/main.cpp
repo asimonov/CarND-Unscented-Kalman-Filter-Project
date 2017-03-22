@@ -208,25 +208,87 @@ int main(int argc, char* argv[]) {
     out_file_ << ukf.x_(3) << "\t"; // yaw_angle -est
     out_file_ << ukf.x_(4) << "\t"; // yaw_rate -est
 
-    // output estimates of sigmax, sigmay, correlationxy, angle
-    MatrixXd v = ukf.P_.topLeftCorner(2, 2);
-    MatrixXd d = MatrixXd(2,2);
-    d.fill(0.0);
-    d(0,0) = v(0,0);
-    d(1,1) = v(1,1);
-    MatrixXd sqrtd = d.cwiseSqrt();
-    MatrixXd dsinv = sqrtd.inverse();
-    MatrixXd r = dsinv * v * dsinv;
-    float sig1 = sqrtd(0,0);
-    float sig2 = sqrtd(1,1);
-    float corr = r(0,1);
-    //float angle = acos(corr);
-    float angle = atan2(corr);
+    // output estimates of sigmax, sigmay, correlationxy, anglexy
+    MatrixXd v = ukf.P_.topLeftCorner(2, 2); // positions covariance. posterior
+    MatrixXd v_prior = ukf.P_prior_.topLeftCorner(2, 2); // positions covariance. prior, before measurement
 
-    out_file_ << sig1 << "\t";
-    out_file_ << sig2 << "\t";
-    out_file_ << corr << "\t";
-    out_file_ << angle << "\t";
+    // posterior
+    // get eigenvalues for ellipse width/height and angle of rotation
+    // based on http://www.visiondummy.com/2014/04/draw-error-ellipse-representing-covariance-matrix/
+    Eigen::EigenSolver<MatrixXd> es(v);
+    VectorXd eval = es.eigenvalues().real();
+    cout << "Eigenvalues of v:" << endl << eval << endl;
+    MatrixXd evec = es.eigenvectors().real();
+    cout << "Eigenvectors of v:" << endl << evec << endl;
+    float ellipse_width = 0.;
+    float ellipse_height = 0.;
+    float ellipse_angle = 0.;
+    if (eval(0) >= eval(1))
+    {
+      // first eigenvalue is largest
+      ellipse_width = eval(0);
+      ellipse_height = eval(1);
+      ellipse_angle = atan2(evec(0,1), evec(0,0));
+    }
+    else
+    {
+      // second eigenvalue is largest
+      ellipse_width = eval(1);
+      ellipse_height = eval(0);
+      ellipse_angle = atan2(evec(1,1), evec(1,0));
+    }
+
+    // prior
+    // get eigenvalues for ellipse width/height and angle of rotation
+    // based on http://www.visiondummy.com/2014/04/draw-error-ellipse-representing-covariance-matrix/
+    Eigen::EigenSolver<MatrixXd> es2(v_prior);
+    VectorXd eval2 = es2.eigenvalues().real();
+    cout << "Eigenvalues of v_prior:" << endl << eval2 << endl;
+    MatrixXd evec2 = es2.eigenvectors().real();
+    cout << "Eigenvectors of v_prior:" << endl << evec2 << endl;
+    float ellipse_width2 = 0.;
+    float ellipse_height2 = 0.;
+    float ellipse_angle2 = 0.;
+    if (eval2(0) >= eval2(1))
+    {
+      // first eigenvalue is largest
+      ellipse_width2 = eval2(0);
+      ellipse_height2 = eval2(1);
+      ellipse_angle2 = atan2(evec2(0,1), evec2(0,0));
+    }
+    else
+    {
+      // second eigenvalue is largest
+      ellipse_width2 = eval2(1);
+      ellipse_height2 = eval2(0);
+      ellipse_angle2 = atan2(evec2(1,1), evec2(1,0));
+    }
+
+    // get stdev and correlation in x,y coordinates. stupid!
+//    MatrixXd d = MatrixXd(2,2);
+//    d.fill(0.0);
+//    d(0,0) = v(0,0);
+//    d(1,1) = v(1,1);
+//    MatrixXd sqrtd = d.cwiseSqrt();
+//    MatrixXd dsinv = sqrtd.inverse();
+//    MatrixXd r = dsinv * v * dsinv;
+//    float sig1 = sqrtd(0,0);
+//    float sig2 = sqrtd(1,1);
+//    float corr = r(0,1);
+//    float angle = acos(corr);
+    //out_file_ << sig1 << "\t";
+    //out_file_ << sig2 << "\t";
+    //out_file_ << corr << "\t";
+    //out_file_ << angle << "\t";
+
+    // posterior distribution
+    out_file_ << ellipse_width << "\t";
+    out_file_ << ellipse_height << "\t";
+    out_file_ << ellipse_angle << "\t";
+    // prior distribution
+    out_file_ << ellipse_width2 << "\t";
+    out_file_ << ellipse_height2 << "\t";
+    out_file_ << ellipse_angle2 << "\t";
 
     out_file_ << "\n";
 
