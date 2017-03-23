@@ -85,12 +85,12 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     cout << "UKF first initialization" << endl;
 
     // Initialize the state x_ with the first measurement.
-    float phi; // will calculate from both types of measurement
+    double phi; // will calculate from both types of measurement
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       // Convert radar from polar to cartesian coordinates
-      float ro = meas_package.raw_measurements_(0);
+      double ro = meas_package.raw_measurements_(0);
       phi = meas_package.raw_measurements_(1);
-      float rodot = meas_package.raw_measurements_(2);
+      double rodot = meas_package.raw_measurements_(2);
       x_ <<   ro * cos(phi),
               ro * sin(phi),
               0.0,//rodot, // assume psi==phi, i.e. object is moving away along the axis from zero to its position
@@ -98,8 +98,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
               0.0; // assume the turn angle is constant
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
-      float px = meas_package.raw_measurements_(0);
-      float py = meas_package.raw_measurements_(1);
+      double px = meas_package.raw_measurements_(0);
+      double py = meas_package.raw_measurements_(1);
       if (abs(px)>1e-5)
         phi = NormaliseAngle(atan2(py, px));
       else
@@ -112,11 +112,16 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
 
     // initialize state covariance matrix
-    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-            0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
-            0.,                0.,                  0.,            0.1,            0., // M_PI*M_PI/16. assume 45 degrees
-            0.,                0.,                  0.,            0.,            0.1; // M_PI*M_PI/16 assume 45 degrees
+    P_ <<   0.01,                0.,              0.,                  0.,            0.,
+            0.,                0.01,                  0.,            0.,            0.,
+            0.,                0.,                  0.01,            0.,            0.,
+            0.,                0.,                  0.,            1.0,            0.,
+            0.,                0.,                  0.,            0.,            0.1;
+//    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
+//            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
+//            0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
+//            0.,                0.,                  0.,            0.1,            0., // M_PI*M_PI/16. assume 45 degrees
+//            0.,                0.,                  0.,            0.,            0.1; // M_PI*M_PI/16 assume 45 degrees
     P_prior_ = P_;
 
     time_us_ = meas_package.timestamp_;
@@ -142,7 +147,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   }
 
   //compute the time elapsed between the current and previous measurements
-  float dt = (meas_package.timestamp_ - time_us_) / 1000000.0;     //dt - expressed in seconds
+  double dt = (meas_package.timestamp_ - time_us_) / 1000000.0;     //dt - expressed in seconds
   time_us_ = meas_package.timestamp_;
   cout << "dt = " << dt << endl;
 
@@ -262,7 +267,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd S = MatrixXd(n_z,n_z);
 
   // calculate Zsig, z_pred and S.
-  // reuse Xsig_aug_ from prediction step. also no augmentation needed because measurement noise has additive effect
+  // reuse Xsig_pred_ from prediction step. also no augmentation needed because measurement noise has additive effect
   PredictRadarMeasurement(n_z, &Zsig, &z_pred, &S);
   cout << "Zsig radar = " << endl << Zsig << endl;
   cout << "z_pred radar = " << endl << z_pred << endl;
@@ -391,20 +396,20 @@ void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsi
   //create matrix with predicted sigma points as columns
   MatrixXd Xsig_pred = MatrixXd(n_x_, 2 * n_aug_ + 1);
 
-  float dtsq = delta_t*delta_t;
+  double dtsq = delta_t*delta_t;
 
   //predict sigma points
   for (int i=0; i<2*n_aug_+1; i++)
   {
     VectorXd x_k = VectorXd(n_aug_);
     x_k = Xsig_aug.col(i);
-    float px = x_k(0);
-    float py = x_k(1);
-    float v = x_k(2);
-    float psi = x_k(3);
-    float psidot = x_k(4);
-    float nu_a = x_k(5);
-    float nu_psidot = x_k(6);
+    double px = x_k(0);
+    double py = x_k(1);
+    double v = x_k(2);
+    double psi = x_k(3);
+    double psidot = x_k(4);
+    double nu_a = x_k(5);
+    double nu_psidot = x_k(6);
 
     VectorXd x_k1 = VectorXd(n_x_);
     //avoid division by zero
@@ -426,8 +431,10 @@ void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsi
     x_k1(1) = x_k1(1) + 0.5*dtsq*sin(psi)*nu_a;
 
     x_k1(2) = v + 0 + delta_t*nu_a;
-    x_k1(3) = NormaliseAngle(psi + psidot*delta_t + 0.5*dtsq*nu_psidot);
-    x_k1(4) = NormaliseAngle(psidot + 0 + delta_t*nu_psidot);
+    //x_k1(3) = NormaliseAngle(psi + psidot*delta_t + 0.5*dtsq*nu_psidot);
+    //x_k1(4) = NormaliseAngle(psidot + 0 + delta_t*nu_psidot);
+    x_k1(3) = psi + psidot*delta_t + 0.5*dtsq*nu_psidot;
+    x_k1(4) = psidot + 0 + delta_t*nu_psidot;
 
     Xsig_pred.col(i) = x_k1;
   }
@@ -451,7 +458,7 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out) {
   {
     x += weights_(i)*Xsig_pred_.col(i);
   }
-  x(3) = NormaliseAngle(x(3));
+  //x(3) = NormaliseAngle(x(3));
 
   //predict state covariance matrix
   P.fill(0.0);
@@ -511,8 +518,8 @@ void UKF::PredictLidarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, 
   for (int i=0; i<2*n_aug_+1; i++)
   {
     VectorXd x = Xsig_pred_.col(i);
-    float px = x(0);
-    float py = x(1);
+    double px = x(0);
+    double py = x(1);
 
     // calculate rho
     Zsig(0,i) = px;
@@ -534,17 +541,18 @@ void UKF::PredictRadarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, 
   for (int i=0; i<2*n_aug_+1; i++)
   {
     VectorXd x = Xsig_pred_.col(i);
-    float px = x(0);
-    float py = x(1);
-    float v = x(2);
-    float psi = NormaliseAngle(x(3));
+    double px = x(0);
+    double py = x(1);
+    double v = x(2);
+    //double psi = NormaliseAngle(x(3));
+    double psi = x(3);
 
     // calculate rho
     Zsig(0,i) = sqrt(px*px+py*py);
 
     // calculate phi
     if (abs(px)>1e-5)
-      Zsig(1,i) = NormaliseAngle(atan2(py, px));
+      Zsig(1,i) = atan2(py, px);//NormaliseAngle(atan2(py, px));
     else
       Zsig(1,i) = M_PI/2.; // assume object is straight ahead
 

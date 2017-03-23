@@ -264,6 +264,17 @@ int main(int argc, char* argv[]) {
       ellipse_angle2 = atan2(evec2(1,1), evec2(1,0));
     }
 
+    // posterior distribution
+    out_file_ << ellipse_width << "\t";
+    out_file_ << ellipse_height << "\t";
+    out_file_ << ellipse_angle << "\t";
+    // prior distribution
+    out_file_ << ellipse_width2 << "\t";
+    out_file_ << ellipse_height2 << "\t";
+    out_file_ << ellipse_angle2 << "\t";
+
+    out_file_ << "\n";
+
     // get stdev and correlation in x,y coordinates. stupid!
 //    MatrixXd d = MatrixXd(2,2);
 //    d.fill(0.0);
@@ -281,16 +292,6 @@ int main(int argc, char* argv[]) {
     //out_file_ << corr << "\t";
     //out_file_ << angle << "\t";
 
-    // posterior distribution
-    out_file_ << ellipse_width << "\t";
-    out_file_ << ellipse_height << "\t";
-    out_file_ << ellipse_angle << "\t";
-    // prior distribution
-    out_file_ << ellipse_width2 << "\t";
-    out_file_ << ellipse_height2 << "\t";
-    out_file_ << ellipse_angle2 << "\t";
-
-    out_file_ << "\n";
 
     // save gt and estimates for px, py, vx, vy for RMSE calculation later
     VectorXd x = VectorXd(4);
