@@ -47,11 +47,14 @@ UKF::UKF() {
   // Process noise
   // standard deviation longitudinal acceleration in m/s^2
   //std_a_ = 3.0; // assuming max acceleration 6m/s2 and take half of that
-  std_a_ = 0.2; // from lessons
+  //std_a_ = 0.2; // from lessons
+  //std_a_ = 0.8; // from slack
+  std_a_ = 1.8;
   // standard deviation yaw acceleration in rad/s^2
   //std_yawdd_ = M_PI/2.;
   //std_yawdd_ = M_PI/20.; about .15
-  std_yawdd_ = .2; // from lectures
+  //std_yawdd_ = .2; // from lectures
+  std_yawdd_ = 0.65; // from slack
 
   // Laser measurement noise
   // standard deviation position1 in m
@@ -112,11 +115,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
 
     // initialize state covariance matrix
-    P_ <<   0.01,                0.,              0.,                  0.,            0.,
-            0.,                0.01,                  0.,            0.,            0.,
-            0.,                0.,                  0.01,            0.,            0.,
-            0.,                0.,                  0.,            1.0,            0.,
-            0.,                0.,                  0.,            0.,            0.1;
+    P_ <<   .5,               0.,              0.,                  0.,            0.,
+            0.,                .5,                  0.,            0.,            0.,
+            0.,                0.,                  .5,            0.,            0.,
+            0.,                0.,                  0.,            .5,            0.,
+            0.,                0.,                  0.,            0.,            .5;
 //    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
 //            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
 //            0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
