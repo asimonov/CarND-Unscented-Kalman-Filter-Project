@@ -46,27 +46,20 @@ UKF::UKF() {
 
   // Process noise
   // standard deviation longitudinal acceleration in m/s^2
-  //std_a_ = 3.0; // assuming max acceleration 6m/s2 and take half of that
-  //std_a_ = 0.2; // from lessons
-  //std_a_ = 0.8; // from slack
-  std_a_ = 1.8;
+  std_a_ = 1.35;
   // standard deviation yaw acceleration in rad/s^2
-  //std_yawdd_ = M_PI/2.;
-  //std_yawdd_ = M_PI/20.; about .15
-  //std_yawdd_ = .2; // from lectures
-  std_yawdd_ = 0.65; // from slack
+  std_yawdd_ = 0.6;
 
   // Laser measurement noise
   // standard deviation position1 in m
-  std_laspx_ = 0.15;
+  std_laspx_ = 0.1;
   // standard deviation position2 in m
-  std_laspy_ = 0.15;
+  std_laspy_ = 0.1;
 
   // Radar measurement noise
   // standard deviation radius in m
   std_radr_ = 0.3;
   // standard deviation angle in rad
-  //std_radphi_ = M_PI/32.; // 5.6 degrees
   std_radphi_ = 0.0175; // from lectures. ~2.7 degrees
   // standard deviation radius change in m/s
   std_radrd_ = 0.1; // from lectures
@@ -88,43 +81,33 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     cout << "UKF first initialization" << endl;
 
     // Initialize the state x_ with the first measurement.
-    double phi; // will calculate from both types of measurement
     if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
       // Convert radar from polar to cartesian coordinates
       double ro = meas_package.raw_measurements_(0);
-      phi = meas_package.raw_measurements_(1);
+      double phi = meas_package.raw_measurements_(1);
       double rodot = meas_package.raw_measurements_(2);
       x_ <<   ro * cos(phi),
               ro * sin(phi),
-              0.0,//rodot, // assume psi==phi, i.e. object is moving away along the axis from zero to its position
-              0.0,//NormaliseAngle(phi), // assume psi==phi. why not. any direction is ok here.
+              0.0, // assume radial velosity is zero
+              0.0,
               0.0; // assume the turn angle is constant
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       double px = meas_package.raw_measurements_(0);
       double py = meas_package.raw_measurements_(1);
-      if (abs(px)>1e-5)
-        phi = NormaliseAngle(atan2(py, px));
-      else
-        phi = M_PI/2.; // assume object is straight ahead
       x_ << meas_package.raw_measurements_(0),
             meas_package.raw_measurements_(1),
             0.0, // assume radial velosity is zero
-            0.0,//phi, // assume object is pointing along the axis from zero to its position
+            0.0,
             0.0; // assume the turn angle is constant
     }
 
     // initialize state covariance matrix
-    P_ <<   .5,               0.,              0.,                  0.,            0.,
-            0.,                .5,                  0.,            0.,            0.,
-            0.,                0.,                  .5,            0.,            0.,
-            0.,                0.,                  0.,            .5,            0.,
-            0.,                0.,                  0.,            0.,            .5;
-//    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-//            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use radar measurement uncertainty as more imprecise one
-//            0.,                0.,                  0.1,            0.,            0., // assume velocity uncertainty is on the order of acceleration noise
-//            0.,                0.,                  0.,            0.1,            0., // M_PI*M_PI/16. assume 45 degrees
-//            0.,                0.,                  0.,            0.,            0.1; // M_PI*M_PI/16 assume 45 degrees
+    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                0.,                  0.1,            0.,            0.,
+            0.,                0.,                  0.,            0.1,            0.,
+            0.,                0.,                  0.,            0.,            0.1;
     P_prior_ = P_;
 
     time_us_ = meas_package.timestamp_;
@@ -158,23 +141,21 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
    *  Prediction
    ****************************************************************************/
 
-//  if (dt > 0.00001) {
-    // predict only if processing non-simultaneous measurements
-    cout << "predicting process change" << endl;
+  // predict only if processing non-simultaneous measurements
+  cout << "predicting process change" << endl;
 
-    // predict in smaller steps if measurements come less frequent than 10Hz
-    // it results in better RMSE
-    while (dt > 0.1)
-    {
-      Prediction(0.1); // Kalman Filter prediction step
-      dt -= 0.1;
-    }
-    Prediction(dt); // Kalman Filter prediction step
+  // predict in smaller steps if measurements come less frequent than 10Hz
+  // it results in better RMSE
+  while (dt > 0.1)
+  {
+    Prediction(0.1); // Kalman Filter prediction step
+    dt -= 0.1;
+  }
+  Prediction(dt); // Kalman Filter prediction step
 
-    cout << "predict done" << endl;
-    cout << "x_ = " << endl << x_ << endl;
-    cout << "P_ = " << endl << P_ << endl;
-//  }
+  cout << "predict done" << endl;
+  cout << "x_ = " << endl << x_ << endl;
+  cout << "P_ = " << endl << P_ << endl;
   P_prior_ = P_;
 
   /*****************************************************************************
@@ -359,9 +340,6 @@ void UKF::AugmentedSigmaPoints(MatrixXd* Xsig_out) {
   P_aug(5, 5) = std_a_ * std_a_;
   P_aug(6, 6) = std_yawdd_ * std_yawdd_;
 
-  //create square root matrix
-  //MatrixXd L = P_aug.llt().matrixL();
-
   // Take matrix square root
   // 1. compute the Cholesky decomposition of P_aug
   Eigen::LLT<MatrixXd> lltOfPaug(P_aug);
@@ -424,8 +402,6 @@ void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsi
     else
     {
       // no change in yaw, going on straight line
-      //x_k1(0) = px + v*(-sin(psi)) + 0.5*dtsq*cos(psi)*nu_a; // my original implementation
-      //x_k1(1) = py + v*(cos(psi)) + 0.5*dtsq*sin(psi)*nu_a;
       x_k1(0) = px + v * delta_t * cos(psi); // from lectures
       x_k1(1) = py + v * delta_t * sin(psi);
     }
@@ -434,8 +410,6 @@ void UKF::SigmaPointPrediction(MatrixXd &Xsig_aug, double delta_t, MatrixXd* Xsi
     x_k1(1) = x_k1(1) + 0.5*dtsq*sin(psi)*nu_a;
 
     x_k1(2) = v + 0 + delta_t*nu_a;
-    //x_k1(3) = NormaliseAngle(psi + psidot*delta_t + 0.5*dtsq*nu_psidot);
-    //x_k1(4) = NormaliseAngle(psidot + 0 + delta_t*nu_psidot);
     x_k1(3) = psi + psidot*delta_t + 0.5*dtsq*nu_psidot;
     x_k1(4) = psidot + 0 + delta_t*nu_psidot;
 
@@ -547,15 +521,14 @@ void UKF::PredictRadarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, 
     double px = x(0);
     double py = x(1);
     double v = x(2);
-    //double psi = NormaliseAngle(x(3));
-    double psi = x(3);
+    double psi = x(3); // could do NormaliseAngle(x(3));
 
     // calculate rho
     Zsig(0,i) = sqrt(px*px+py*py);
 
     // calculate phi
     if (abs(px)>1e-5)
-      Zsig(1,i) = atan2(py, px);//NormaliseAngle(atan2(py, px));
+      Zsig(1,i) = atan2(py, px);// could do NormaliseAngle(atan2(py, px));
     else
       Zsig(1,i) = M_PI/2.; // assume object is straight ahead
 
@@ -598,15 +571,4 @@ double UKF::NormaliseAngle(double angle)
 
   return result;
 }
-
-// wolfgang
-//static double SNormalizeAngle(double phi)
-//{
-//  const double Max = M_PI;
-//  const double Min = -M_PI;
-//
-//  return phi < Min
-//         ? Max + std::fmod(phi - Min, Max - Min)
-//         : std::fmod(phi - Min, Max - Min) + Min;
-//}
 
