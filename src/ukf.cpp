@@ -46,23 +46,23 @@ UKF::UKF() {
 
   // Process noise
   // standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1.35;
+  std_a_ = 4.0;
   // standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.6;
+  std_yawdd_ = 0.7;
 
   // Laser measurement noise
   // standard deviation position1 in m
-  std_laspx_ = 0.1;
+  std_laspx_ = 0.15;
   // standard deviation position2 in m
-  std_laspy_ = 0.1;
+  std_laspy_ = 0.15;
 
   // Radar measurement noise
   // standard deviation radius in m
   std_radr_ = 0.3;
   // standard deviation angle in rad
-  std_radphi_ = 0.0175; // from lectures. ~2.7 degrees
+  std_radphi_ = 0.03;
   // standard deviation radius change in m/s
-  std_radrd_ = 0.1; // from lectures
+  std_radrd_ = 0.3;
 
 }
 
@@ -103,11 +103,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     }
 
     // initialize state covariance matrix
-    P_ << std_laspx_*std_laspx_, 0.,                  0.,            0.,            0., // use lidar measurement uncertainty
-            0.,                std_laspy_*std_laspy_, 0.,            0.,            0., // use lidar measurement uncertainty
-            0.,                0.,                  0.1,            0.,            0.,
-            0.,                0.,                  0.,            0.1,            0.,
-            0.,                0.,                  0.,            0.,            0.1;
+    P_ << std_laspx_*std_laspx_, 0.,                    0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                  std_laspy_*std_laspy_, 0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                  0.,                    0.1,           0.,            0.,
+            0.,                  0.,                    0.,            0.1,           0.,
+            0.,                  0.,                    0.,            0.,            0.1;
     P_prior_ = P_;
 
     time_us_ = meas_package.timestamp_;
@@ -352,7 +352,7 @@ void UKF::AugmentedSigmaPoints(MatrixXd* Xsig_out) {
     Eigen::EigenSolver<MatrixXd> es2(P_, false);
     cout << "Eigenvalues of P_:" << endl << es2.eigenvalues() << endl;
 
-    throw std::range_error("LLT failed");
+    throw std::range_error("LLT failed. matrix not positive semi-definite");
   }
   // 2. get the lower triangle
   MatrixXd L = lltOfPaug.matrixL();

@@ -141,15 +141,11 @@ int main(int argc, char* argv[]) {
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
-  //for (int i=0; i<100; i++)
-  //{
-  //  float a = (i-50)*M_PI/10;
-  //  cout << a << " " << ukf.NormaliseAngle(a) << endl;
-  //}
+  // NIS for laser and radar
+  vector<double> NIS_laser;
+  vector<double> NIS_radar;
 
   size_t number_of_measurements = measurement_pack_list.size();
-//  size_t number_of_measurements = 25;
-
 
   // start filtering from the second frame (the speed is unknown in the first frame)
   for (size_t k = 0; k < number_of_measurements; ++k) {
@@ -193,6 +189,9 @@ int main(int argc, char* argv[]) {
       // NIS
       out_file_ << ukf.NIS_laser_ << "\t";
 
+      if (ukf.use_laser_)
+        NIS_laser.push_back(ukf.NIS_laser_);
+
     } else if (measurement_pack_list[k].sensor_type_ == MeasurementPackage::RADAR) {
       // output the estimation in the cartesian coordinates
       float ro = measurement_pack_list[k].raw_measurements_(0);
@@ -201,6 +200,9 @@ int main(int argc, char* argv[]) {
       out_file_ << ro * sin(phi) << "\t"; // p2_meas
       // NIS
       out_file_ << ukf.NIS_radar_ << "\t";
+
+      if (ukf.use_radar_)
+        NIS_radar.push_back(ukf.NIS_radar_);
     }
 
     // we do not have ground truth for the next state variables, but output their estimates anyway
@@ -237,6 +239,10 @@ int main(int argc, char* argv[]) {
       ellipse_height = eval(0);
       ellipse_angle = atan2(evec(1,1), evec(1,0));
     }
+    // posterior distribution
+    out_file_ << ellipse_width << "\t";
+    out_file_ << ellipse_height << "\t";
+    out_file_ << ellipse_angle << "\t";
 
     // prior
     // get eigenvalues for ellipse width/height and angle of rotation
@@ -263,35 +269,12 @@ int main(int argc, char* argv[]) {
       ellipse_height2 = eval2(0);
       ellipse_angle2 = atan2(evec2(1,1), evec2(1,0));
     }
-
-    // posterior distribution
-    out_file_ << ellipse_width << "\t";
-    out_file_ << ellipse_height << "\t";
-    out_file_ << ellipse_angle << "\t";
     // prior distribution
     out_file_ << ellipse_width2 << "\t";
     out_file_ << ellipse_height2 << "\t";
     out_file_ << ellipse_angle2 << "\t";
 
     out_file_ << "\n";
-
-    // get stdev and correlation in x,y coordinates. stupid!
-//    MatrixXd d = MatrixXd(2,2);
-//    d.fill(0.0);
-//    d(0,0) = v(0,0);
-//    d(1,1) = v(1,1);
-//    MatrixXd sqrtd = d.cwiseSqrt();
-//    MatrixXd dsinv = sqrtd.inverse();
-//    MatrixXd r = dsinv * v * dsinv;
-//    float sig1 = sqrtd(0,0);
-//    float sig2 = sqrtd(1,1);
-//    float corr = r(0,1);
-//    float angle = acos(corr);
-    //out_file_ << sig1 << "\t";
-    //out_file_ << sig2 << "\t";
-    //out_file_ << corr << "\t";
-    //out_file_ << angle << "\t";
-
 
     // save gt and estimates for px, py, vx, vy for RMSE calculation later
     VectorXd x = VectorXd(4);
@@ -316,6 +299,29 @@ int main(int argc, char* argv[]) {
   // compute the accuracy (RMSE)
   Tools tools;
   cout << "Accuracy - RMSE:" << endl << tools.CalculateRMSE(estimations, ground_truth) << endl;
+
+  // calculate NIS statistics
+  unsigned int above_threshold;
+  double pct;
+
+  cout << "NIS laser: ";
+  above_threshold = 0;
+  for(unsigned int i=0; i < NIS_laser.size(); ++i){
+    if (NIS_laser[i] > 5.991) // 5% threshold for chi-squared with 2 degrees of freedom http://sites.stat.psu.edu/~mga/401/tables/Chi-square-table.pdf
+      above_threshold += 1;
+  }
+  pct = 100*double(above_threshold)/double(NIS_laser.size());
+  cout << above_threshold << " out of " << NIS_laser.size() << " (or " << pct << "%) above theoretical 5% threshold" << endl;
+
+  cout << "NIS radar: ";
+  above_threshold = 0;
+  for(unsigned int i=0; i < NIS_radar.size(); ++i){
+    if (NIS_radar[i] > 7.815) // 5% threshold for chi-squared with 2 degrees of freedom http://sites.stat.psu.edu/~mga/401/tables/Chi-square-table.pdf
+      above_threshold += 1;
+  }
+  pct = 100*double(above_threshold)/double(NIS_radar.size());
+  cout << above_threshold << " out of " << NIS_radar.size() << " (or " << pct << "%) above theoretical 5% threshold" << endl;
+
 
   cout << "Done!" << endl;
   return 0;

@@ -160,15 +160,7 @@ public:
    * @param angle  input angle to be normalised
    */
   double NormaliseAngle(double angle);
-//  inline double NormaliseAngle( double angle )
-//  {
-//    //return angle;
-//
-//    //double twoPi = 2.0 * M_PI;
-//    //return angle - twoPi * floor( angle / twoPi );
-//
-//    return angle - int(angle / M_PI) * M_PI;
-//  }
+
 };
 
 #endif /* UKF_H */
