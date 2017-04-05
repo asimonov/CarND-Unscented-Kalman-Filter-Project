@@ -46,7 +46,7 @@ UKF::UKF() {
 
   // Process noise
   // standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 4.0;
+  std_a_ = 2.5;
   // standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.7;
 
@@ -60,7 +60,7 @@ UKF::UKF() {
   // standard deviation radius in m
   std_radr_ = 0.3;
   // standard deviation angle in rad
-  std_radphi_ = 0.03;
+  std_radphi_ = 0.03;//M_PI/32.;
   // standard deviation radius change in m/s
   std_radrd_ = 0.3;
 
@@ -108,6 +108,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
             0.,                  0.,                    0.1,           0.,            0.,
             0.,                  0.,                    0.,            0.1,           0.,
             0.,                  0.,                    0.,            0.,            0.1;
+    P_ << std_radr_*std_radr_, 0.,                    0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                  std_radr_*std_radr_, 0.,            0.,            0., // use lidar measurement uncertainty
+            0.,                  0.,                    std_a_*std_a_,           0.,            0.,
+            0.,                  0.,                    0.,            std_radphi_*std_radphi_,           0.,
+            0.,                  0.,                    0.,            0.,            1.;
     P_prior_ = P_;
 
     time_us_ = meas_package.timestamp_;
@@ -437,12 +442,23 @@ void UKF::PredictMeanAndCovariance(VectorXd* x_out, MatrixXd* P_out) {
   }
   //x(3) = NormaliseAngle(x(3));
 
-  //predict state covariance matrix
+  //predict state covariance matrix. traditional way. may result in non-positive-semi-definite P
+//  P.fill(0.0);
+//  for (int i=0; i<2*n_aug_+1; i++)
+//  {
+//    // state difference
+//    VectorXd x_diff = Xsig_pred_.col(i) - x;
+//    x_diff(3) = NormaliseAngle(x_diff(3));
+//
+//    P += weights_(i)*(x_diff)*(x_diff.transpose());
+//  }
+
+  //predict state covariance matrix to mitigate non-positive-semi-definite issues
   P.fill(0.0);
-  for (int i=0; i<2*n_aug_+1; i++)
+  for (int i=1; i<2*n_aug_+1; i++)
   {
     // state difference
-    VectorXd x_diff = Xsig_pred_.col(i) - x;
+    VectorXd x_diff = Xsig_pred_.col(i) - Xsig_pred_.col(0);
     x_diff(3) = NormaliseAngle(x_diff(3));
 
     P += weights_(i)*(x_diff)*(x_diff.transpose());
@@ -530,7 +546,7 @@ void UKF::PredictRadarMeasurement(int n_z, MatrixXd* Zsig_out, VectorXd* z_out, 
     if (abs(px)>1e-5)
       Zsig(1,i) = atan2(py, px);// could do NormaliseAngle(atan2(py, px));
     else
-      Zsig(1,i) = M_PI/2.; // assume object is straight ahead
+      Zsig(1,i) = M_PI/2.; // assume object is pointing straight (yaw 90 degrees)
 
     // calculate rhodot
     if (abs(Zsig(0,i)) < 1e-5)
